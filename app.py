@@ -2,7 +2,6 @@
 import os
 
 from urlparse import urlparse
-#from peewee import PostgresqlDatabase
 import psycopg2
 from flask import Flask,request
 
@@ -21,11 +20,12 @@ db = psycopg2.connect(database=db_params.path[1:],
                       port=db_params.port)
 
 @app.route('/')
-def version():
-    #return (db.execute('select version()').fetchone()[0],200,{'Content-type':'text/plain'})
-    c = db.cursor()
-    c.execute('select version()')
-    return c.fetchone()[0]
+def root():
+    return "LiveAuth"
+
+@app.route('/ping)
+def ping():
+    return db.cursor().execute('select version()').fetchone()[0]
 
 @app.route('/oauth')
 def oauth():
