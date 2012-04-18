@@ -2,7 +2,8 @@
 import os
 
 from urlparse import urlparse
-from peewee import PostgresqlDatabase
+#from peewee import PostgresqlDatabase
+import psycopg2
 from flask import Flask,request
 
 DEBUG = os.environ.get('DEBUG',False)
@@ -13,16 +14,18 @@ app.config.from_object(__name__)
 
 db_params = urlparse(os.environ.get('DATABASE_URL'))
 
-db = PostgresqlDatabase(database=db_params.path[1:],
-                        user=db_params.username,
-                        password=db_params.password,
-                        host=db_params.hostname,
-                        port=db_params.port)
-db.connect()
+db = psycopg2.connect(database=db_params.path[1:],
+                      user=db_params.username,
+                      password=db_params.password,
+                      host=db_params.hostname,
+                      port=db_params.port)
 
 @app.route('/')
 def version():
-    return (db.execute('select version()').fetchone()[0],200,{'Content-type':'text/plain'})
+    #return (db.execute('select version()').fetchone()[0],200,{'Content-type':'text/plain'})
+    c = db.cursor()
+    c.execute('select version()')
+    return c.fetchone()[0]
 
 @app.route('/oauth')
 def oauth():
