@@ -5,7 +5,8 @@ from urlparse import urlparse
 import psycopg2
 from flask import Flask,abort,request
 
-DEBUG = os.environ.get('DEBUG',False)
+#DEBUG = os.environ.get('DEBUG',False)
+DEBUG = True
 SECRET_KEY = os.urandom(32)
 
 app = Flask(__name__)
@@ -41,7 +42,7 @@ def root():
 def ping():
     with cursor(db) as c:
         c.execute('select version()')
-        return text(c.fetchone()[0]+"\n")
+        return text(c.fetchone()[0])
 
 @app.route('/list')
 def list():
@@ -50,7 +51,7 @@ def list():
         rows = []
         for row in c:
             rows.append("%s : %s (%s)" % row)
-        return text("\n".join(rows) + "\n")
+        return text("\n".join(rows))
 
 @app.route('/callback')
 def callback():
@@ -58,7 +59,7 @@ def callback():
         state = request.values['state']
         code = request.values['code']
         c.execute('INSERT into token(state,code) values (%s,%s)',(state,code))
-        return text("State: %s\nCode:  %s\n" % (state,code))
+        return text("State: %s\nCode:  %s" % (state,code))
 
 @app.route('/get/<state>')
 def get(state):
@@ -66,16 +67,16 @@ def get(state):
         c.execute("SELECT code FROM token WHERE state = %s",(state,))
         try:
             token, = c.fetchone()
-            return text(token + "\n")
+            return text(token)
         except TypeError, e:
-            return text("Key not found\n",404)
+            return text("Key not found",404)
 
 @app.route('/delete')
 @app.route('/delete/<int:secs>')
 def drop(secs=0):
     with cursor(db) as c:
         c.execute("DELETE FROM token WHERE extract('epoch' from now() - inserted) > %s",(secs,));
-        return text("%d rows deleted\n" % c.rowcount)
+        return text("%d rows deleted" % c.rowcount)
 
 if __name__ == '__main__':
     # Bind to PORT if defined, otherwise default to 5000.
