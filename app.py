@@ -3,7 +3,7 @@ import os,sys
 
 from urlparse import urlparse
 import psycopg2
-from flask import Flask,request
+from flask import Flask,abort,request
 
 DEBUG = os.environ.get('DEBUG',False)
 SECRET_KEY = os.urandom(32)
@@ -41,8 +41,8 @@ def init_db(db):
 
 init_db(db)
 
-def text(msg):
-    return (msg,200,{'Content-type':'text/plain'})
+def text(msg,code=200):
+    return (msg,code,{'Content-type':'text/plain'})
 
 @app.route('/')
 def root():
@@ -52,9 +52,9 @@ def root():
 def ping():
     with cursor(db) as c:
         c.execute('select version()')
-        return text(c.fetchone()[0])
+        return text(c.fetchone()[0]+"\n")
 
-@app.route('/oauth')
+@app.route('/callback')
 def oauth():
     with cursor(db) as c:
         state = request.values['state']
@@ -69,14 +69,24 @@ def list():
         rows = []
         for row in c:
             rows.append("%s : %s (%s)" % row)
-        return text("\n".join(rows))
+        return text("\n".join(rows) + "\n")
+
+@app.route('/get/<state>')
+def get(state):
+    with cursor(db) as c:
+        c.execute("SELECT code FROM token WHERE state = %s",(state,))
+        try:
+            token, = c.fetchone()
+            return text(token)
+        except TypeError, e:
+            return text("Key not found\n",404)
 
 @app.route('/delete')
 @app.route('/delete/<int:secs>')
 def drop(secs=0):
     with cursor(db) as c:
         c.execute("DELETE FROM token WHERE extract('epoch' from now() - inserted) > %s",(secs,));
-        return text("%d rows deleted" % c.rowcount)
+        return text("%d rows deleted\n" % c.rowcount)
 
 if __name__ == '__main__':
     # Bind to PORT if defined, otherwise default to 5000.
