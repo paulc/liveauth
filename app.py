@@ -30,17 +30,6 @@ class cursor(object):
     def __exit__(self,type,value,traceback):
         self.c.close()
 
-def init_db(db):
-    with cursor(db) as c:
-        c.execute('SELECT tablename FROM pg_tables WHERE schemaname=%s and tablename=%s',
-                                             ('public','token'));
-        if c.fetchone() != ('token',):
-            c.execute('''CREATE TABLE token (state TEXT PRIMARY KEY,
-                                             code TEXT NOT NULL,
-                                             inserted TIMESTAMP NOT NULL DEFAULT NOW())''')
-
-init_db(db)
-
 def text(msg,code=200):
     return (msg,code,{'Content-type':'text/plain'})
 
