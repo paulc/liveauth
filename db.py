@@ -22,12 +22,17 @@ class cursor(object):
     def __exit__(self,type,value,traceback):
         self.c.close()
 
+def drop_db(db):
+    with cursor(db) as c:
+        c.execute('DROP TABLE token CASCADE')
+
 def init_db(db):
     with cursor(db) as c:
         c.execute('SELECT tablename FROM pg_tables WHERE schemaname=%s and tablename=%s',
                                              ('public','token'));
         if c.fetchone() != ('token',):
             c.execute('''CREATE TABLE token (state TEXT PRIMARY KEY,
+                                             appname TEXT NOT NULL,
                                              code TEXT NOT NULL,
                                              inserted TIMESTAMP NOT NULL DEFAULT NOW())''')
 
