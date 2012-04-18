@@ -3,7 +3,7 @@ import os
 
 from urlparse import urlparse
 from peewee import PostgresqlDatabase
-from flask import Flask,request
+from flask import Flask,request,response
 
 DEBUG = True
 SECRET_KEY = os.urandom(32)
@@ -22,11 +22,16 @@ db.connect()
 
 @app.route('/')
 def version():
+    response.headers["Content-type"] = "text/plain"
     return db.execute('select version()').fetchone()[0]
 
 @app.route('/oauth')
 def oauth():
-    return str(request.values)
+    r = []
+    for k,v in request.values:
+        r.append("Key: %s / Value: %s" % (k,v)) 
+    response.headers["Content-type"] = "text/plain"
+    return "\n".join(r)
 
 if __name__ == '__main__':
     # Bind to PORT if defined, otherwise default to 5000.
