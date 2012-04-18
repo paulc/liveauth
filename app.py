@@ -23,9 +23,11 @@ db = psycopg2.connect(database=db_params.path[1:],
 def root():
     return "LiveAuth"
 
-@app.route('/ping)
+@app.route('/ping')
 def ping():
-    return db.cursor().execute('select version()').fetchone()[0]
+    c = db.cursor()
+    c.execute('select version()')
+    return c.fetchone()[0]
 
 @app.route('/oauth')
 def oauth():
