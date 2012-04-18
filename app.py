@@ -41,15 +41,18 @@ def init_db(db):
 
 init_db(db)
 
+def text(msg):
+    return (msg,200,{'Content-type':'text/plain'})
+
 @app.route('/')
 def root():
-    return "LiveAuth"
+    return text("LiveAuth")
 
 @app.route('/ping')
 def ping():
     with cursor(db) as c:
         c.execute('select version()')
-        return c.fetchone()[0]
+        return text(c.fetchone()[0])
 
 @app.route('/oauth')
 def oauth():
@@ -57,7 +60,7 @@ def oauth():
         state = request.values['state']
         code = request.values['code']
         c.execute('INSERT into token(state,code) values (%s,%s)',(state,code))
-        return ("State: %s\nCode:  %s\n" % (state,code),200,{'Content-type':'text/plain'})
+        return text("State: %s\nCode:  %s\n" % (state,code))
 
 @app.route('/list')
 def list():
@@ -66,7 +69,14 @@ def list():
         rows = []
         for row in c:
             rows.append("%s : %s (%s)" % row)
-        return "<html><body><pre>%s</pre></body></html>" % "<br>".join(rows)
+        return text("\n".join(rows))
+
+@app.route('/delete')
+@app.route('/delete/<int:secs>')
+def drop(secs=0):
+    with cursor(db) as c:
+        c.execute("DELETE FROM token WHERE extract('epoch' from now() - inserted) > %s",(secs,));
+        return text("%d rows deleted" % c.rowcount)
 
 if __name__ == '__main__':
     # Bind to PORT if defined, otherwise default to 5000.
