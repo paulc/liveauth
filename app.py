@@ -3,12 +3,13 @@ import os
 
 from urlparse import urlparse
 from peewee import PostgresqlDatabase
-
-from flask import Flask
-app = Flask(__name__)
+from flask import Flask,request
 
 DEBUG = True
 SECRET_KEY = os.urandom(32)
+
+app = Flask(__name__)
+app.config.from_object(__name__)
 
 db_params = urlparse(os.environ.get('DATABASE_URL',"postgres://localhost/paulc"))
 
@@ -20,8 +21,12 @@ db = PostgresqlDatabase(database=db_params.path[1:],
 db.connect()
 
 @app.route('/')
-def hello():
+def db():
     return db.execute('select version()').fetchone()[0]
+
+@app.route('/oauth')
+def oauth():
+    return str(request.values)
 
 if __name__ == '__main__':
     # Bind to PORT if defined, otherwise default to 5000.
