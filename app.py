@@ -21,7 +21,7 @@ db = PostgresqlDatabase(database=db_params.path[1:],
 db.connect()
 
 @app.route('/')
-def db():
+def version():
     return db.execute('select version()').fetchone()[0]
 
 @app.route('/oauth')
