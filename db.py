@@ -32,7 +32,6 @@ def init_db(db):
                                              ('public','token'));
         if c.fetchone() != ('token',):
             c.execute('''CREATE TABLE token (state TEXT PRIMARY KEY,
-                                             appname TEXT NOT NULL,
                                              code TEXT NOT NULL,
                                              inserted TIMESTAMP NOT NULL DEFAULT NOW())''')
 

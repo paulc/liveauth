@@ -43,22 +43,22 @@ def ping():
         c.execute('select version()')
         return text(c.fetchone()[0]+"\n")
 
+@app.route('/list')
+def list():
+    with cursor(db) as c:
+        c.execute('SELECT state,code,inserted FROM token ORDER by inserted')
+        rows = []
+        for row in c:
+            rows.append("%s : %s (%s)" % row)
+        return text("\n".join(rows) + "\n")
+
 @app.route('/callback')
-def oauth():
+def callback():
     with cursor(db) as c:
         state = request.values['state']
         code = request.values['code']
         c.execute('INSERT into token(state,code) values (%s,%s)',(state,code))
         return text("State: %s\nCode:  %s\n" % (state,code))
-
-@app.route('/list')
-def list():
-    with cursor(db) as c:
-        c.execute('SELECT * FROM token')
-        rows = []
-        for row in c:
-            rows.append("%s : %s (%s)" % row)
-        return text("\n".join(rows) + "\n")
 
 @app.route('/get/<state>')
 def get(state):
@@ -66,7 +66,7 @@ def get(state):
         c.execute("SELECT code FROM token WHERE state = %s",(state,))
         try:
             token, = c.fetchone()
-            return text(token)
+            return text(token + "\n")
         except TypeError, e:
             return text("Key not found\n",404)
 
