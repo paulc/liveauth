@@ -1,35 +1,15 @@
 
 import os,sys
-
 from urlparse import urlparse
-import psycopg2
 from flask import Flask,abort,request
 
-#DEBUG = os.environ.get('DEBUG',False)
-DEBUG = True
+import db
+
+DEBUG = os.environ.get('DEBUG',False)
 SECRET_KEY = os.urandom(32)
 
 app = Flask(__name__)
 app.config.from_object(__name__)
-
-db_params = urlparse(os.environ.get('DATABASE_URL'))
-
-db = psycopg2.connect(database=db_params.path[1:],
-                      user=db_params.username,
-                      password=db_params.password,
-                      host=db_params.hostname,
-                      port=db_params.port)
-
-db.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-
-class cursor(object):
-    def __init__(self,db):
-        self.db = db
-    def __enter__(self):
-        self.c = db.cursor()
-        return self.c
-    def __exit__(self,type,value,traceback):
-        self.c.close()
 
 def text(msg,code=200):
     return (msg,code,{'Content-type':'text/plain'})
@@ -40,41 +20,54 @@ def root():
 
 @app.route('/ping')
 def ping():
-    with cursor(db) as c:
+    with db.cursor() as c:
         c.execute('select version()')
         return text(c.fetchone()[0])
 
 @app.route('/list')
 def list():
-    with cursor(db) as c:
-        c.execute('SELECT state,code,inserted FROM token ORDER by inserted')
+    with db.cursor() as c:
+        c.execute('SELECT state,code,error,error_description,inserted FROM token ORDER by inserted')
         rows = []
-        for row in c:
-            rows.append("%s : %s (%s)" % row)
+        for state,code,error,error_description,inserted in c:
+            if error:
+                rows.append("%s : ERROR %s (%s) [%s]" % (state,error,error_description,inserted))
+            else:
+                rows.append("%s : %s [%s]" % (state,code,inserted))
         return text("\n".join(rows))
 
 @app.route('/callback')
 def callback():
-    with cursor(db) as c:
+    with db.cursor() as c:
         state = request.values['state']
-        code = request.values['code']
-        c.execute('INSERT into token(state,code) values (%s,%s)',(state,code))
-        return text("State: %s\nCode:  %s" % (state,code))
+        if request.values.has_key('error'):
+            error = request.values['error']
+            error_description = request.values['error_description']
+            c.execute('INSERT into token(state,error,error_description) values (%s,%s,%s)',
+                                        (state,error,error_description))
+            return text("State: %s\nError: (%s) %s" % (state,error,error_description))
+        else:
+            code = request.values['code']
+            c.execute('INSERT into token(state,code) values (%s,%s)',(state,code))
+            return text("State: %s\nCode:  %s" % (state,code))
 
 @app.route('/get/<state>')
 def get(state):
-    with cursor(db) as c:
-        c.execute("SELECT code FROM token WHERE state = %s",(state,))
+    with db.cursor() as c:
+        c.execute("SELECT code,error,error_description FROM token WHERE state = %s",(state,))
         try:
-            token, = c.fetchone()
-            return text(token)
+            token,error,error_description = c.fetchone()
+            if error:
+                return text("ERROR: %s (%s)" % (error,error_description))
+            else:
+                return text("%s" % token)
         except TypeError, e:
             return text("Key not found",404)
 
 @app.route('/delete')
 @app.route('/delete/<int:secs>')
 def drop(secs=0):
-    with cursor(db) as c:
+    with db.cursor() as c:
         c.execute("DELETE FROM token WHERE extract('epoch' from now() - inserted) > %s",(secs,));
         return text("%d rows deleted" % c.rowcount)
 
